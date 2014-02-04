@@ -17,7 +17,7 @@ class PublicatorClient(object):
     Client objects that communicates with publicator server.
     """
 
-    HEADERS = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+    HEADERS = {'Content-type': 'application/json'}
 
     SESSION_URI = 'session/'
     MESSAGE_URI = 'messages/'
@@ -52,5 +52,15 @@ class PublicatorClient(object):
         response = requests.post(url,
                                  data={'message': msg},
                                  headers=self.HEADERS)
+        # if response.status_code == 422:
+        #     self.session_id = self.get_session()
+        # If an error occured create a new session.
+        if not response.ok:
+            self.session_id = self.get_session()
+
         response.raise_for_status()
-        # XXX
+        logger.debug('Message successfully published on channel "%s". '
+                     'Response status code is %s (%s)',
+                     channel,
+                     response.status_code,
+                     response.reason)
