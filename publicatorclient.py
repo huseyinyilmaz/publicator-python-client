@@ -1,3 +1,4 @@
+import json
 import logging
 
 import requests
@@ -19,13 +20,14 @@ class PublicatorClient(object):
 
     HEADERS = {'Content-type': 'application/json'}
 
-    SESSION_URI = 'session/'
-    MESSAGE_URI = 'messages/'
+    def __init__(self, base_url, session_id=None):
+        self.base_url = '{0}{1}'.format(
+            base_url,
+            ('' if base_url[-1] == '/' else '/'))
 
-    def __init__(self, base_url):
-        self.base_url = '{0}{1}'.format(base_url,
-                                        ('' if base_url[-1] == '/' else '/'))
-        self.session_id = self.get_session()
+        if not session_id:
+            session_id = self.get_session()
+        self.session_id = session_id
 
     def get_session(self):
         """
@@ -36,31 +38,34 @@ class PublicatorClient(object):
         response = requests.get(url, headers=self.HEADERS)
         response.raise_for_status()
         result = response.json()
-        logger.debug('Session is response=%s', result)
+        logger.debug('Session has response %s', result)
         return result['session']
+
+    def _send_msg(self, msg):
+        url = '{0}{1}/http/'.format(self.base_url,
+                                    self.session_id)
+        logger.debug('Send a message to %s message %s', url, msg)
+
+        response = requests.post(url,
+                                 data=json.dumps(msg),
+                                 headers=self.HEADERS)
+        logger.debug('message successfully sent to %s message=%s', url, msg)
+        response.raise_for_status()
+        result = response.json()
+        if result['type'] == 'error' \
+                and result['data'] == 'consumer_not_found':
+            logger.warning('Session is dead. Creating a new session')
+            self.session_id = self.get_session()
+            result = self._send_msg(msg)
+        return result
 
     def publish(self, channel, msg):
         """
         Publishes a message to given channel
         """
-        url = '{0}{1}/{2}{3}/'.format(self.base_url,
-                                      self.session_id,
-                                      self.MESSAGE_URI,
-                                      channel)
-        logger.debug('Going to server %s to publish a message', url)
 
-        response = requests.post(url,
-                                 data={'message': msg},
-                                 headers=self.HEADERS)
-        # if response.status_code == 422:
-        #     self.session_id = self.get_session()
-        # If an error occured create a new session.
-        if not response.ok:
-            self.session_id = self.get_session()
+        msg_to_send = {'type': 'publish',
+                       'data': {'channel_code': channel,
+                                'message': msg}}
 
-        response.raise_for_status()
-        logger.debug('Message successfully published on channel "%s". '
-                     'Response status code is %s (%s)',
-                     channel,
-                     response.status_code,
-                     response.reason)
+        return self._send_msg(msg_to_send)
