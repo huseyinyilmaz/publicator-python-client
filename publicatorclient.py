@@ -20,6 +20,8 @@ class PublicatorClient(object):
 
     HEADERS = {'Content-type': 'application/json'}
 
+    SESSION_URI = 'session/'
+
     def __init__(self, base_url, session_id=None):
         self.base_url = '{0}{1}'.format(
             base_url,
