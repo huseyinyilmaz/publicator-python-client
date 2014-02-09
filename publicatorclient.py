@@ -22,26 +22,30 @@ class PublicatorClient(object):
 
     SESSION_URI = 'session/'
 
-    def __init__(self, base_url, session_id=None):
+    def __init__(self, base_url, session_id=None, auth_info=None):
         self.base_url = '{0}{1}'.format(
             base_url,
             ('' if base_url[-1] == '/' else '/'))
 
         if not session_id:
-            session_id = self.get_session()
+            session_id = self.get_session(auth_info)
         self.session_id = session_id
 
-    def get_session(self):
+    def get_session(self, auth_info):
         """
         Creates a new session on publicator server
         """
         url = '{0}{1}'.format(self.base_url, self.SESSION_URI)
-        logger.debug('Going to server %s to create a session', url)
-        response = requests.get(url, headers=self.HEADERS)
+        data = {'auth_info': auth_info}
+        logger.debug('Going to server %s to create a session with data %s',
+                     url, data)
+        response = requests.post(url,
+                                 headers=self.HEADERS,
+                                 data=json.dumps(data))
         response.raise_for_status()
         result = response.json()
         logger.debug('Session has response %s', result)
-        return result['session']
+        return result['data']
 
     def _send_msg(self, msg):
         url = '{0}{1}/http/'.format(self.base_url,
