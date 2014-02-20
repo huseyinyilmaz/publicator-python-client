@@ -18,6 +18,8 @@ class PublicatorClient(object):
     Client objects that communicates with publicator server.
     """
 
+    ALL = 'all'
+    MESSAGE_ONLY = 'message_only'
     HEADERS = {'Content-type': 'application/json'}
 
     SESSION_URI = 'session/'
@@ -73,5 +75,41 @@ class PublicatorClient(object):
         msg_to_send = {'type': 'publish',
                        'data': {'channel_code': channel,
                                 'message': msg}}
+
+        return self._send_msg(msg_to_send)
+
+    def subscribe(self, channel, subscribtion_type=MESSAGE_ONLY):
+        """
+        Subscribes to given channel
+        """
+        msg_to_send = {'type': 'subscribe',
+                       'data': {'channel_code': channel,
+                                'type': subscribtion_type}}
+
+        return self._send_msg(msg_to_send)
+
+    def unsubscribe(self, channel):
+        """
+        Unsubscribes from given channel
+        """
+        msg_to_send = {'type': 'subscribe',
+                       'data': channel}
+
+        return self._send_msg(msg_to_send)
+
+    def get_subscribtions(self):
+        """
+        Get list of subscribed channel list for current session.
+        """
+        msg_to_send = {'type': 'get_subscribtions'}
+
+        return self._send_msg(msg_to_send)
+
+    def get_consumers(self, channel):
+        """
+        Get list of consumer codes for given channel code.
+        """
+        msg_to_send = {'type': 'get_subscribtions',
+                       'data': {'channel_code': channel}}
 
         return self._send_msg(msg_to_send)
