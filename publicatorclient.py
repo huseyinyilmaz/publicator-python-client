@@ -106,10 +106,11 @@ class PublicatorClient(object):
         """
         Unsubscribes from given channel
         """
-        msg_to_send = {'type': 'subscribe',
+        msg_to_send = {'type': 'unsubscribe',
                        'data': channel}
 
-        return self._send_msg(msg_to_send, 'unsubscribed')
+        result = self._send_msg(msg_to_send, 'unsubscribed')
+        return True
 
     def get_subscribtions(self):
         """
