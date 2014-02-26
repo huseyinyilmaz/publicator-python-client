@@ -8,7 +8,7 @@ setup(
     author_email='yilmazhuseyin@gmail.com',
     url='https://github.com/huseyinyilmaz/publicator-python-client',
     description='Client for connecting publicator server.',
-    long_description=os.path.join(os.path.dirname(__file__), 'README.md'),
+    long_description=os.path.join(os.path.dirname(__file__), 'README.rst'),
     packages=find_packages(exclude=[]),
     install_requires=[
         'requests==2.2.1'
