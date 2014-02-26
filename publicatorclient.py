@@ -13,6 +13,13 @@ if not logger.handlers:
     logger.addHandler(ch)
 
 
+class PublicatorClientException(Exception):
+    """
+    Base Exception that publicator client raises
+    """
+    pass
+
+
 class PublicatorClient(object):
     """
     Client objects that communicates with publicator server.
@@ -28,7 +35,7 @@ class PublicatorClient(object):
         self.base_url = '{0}{1}'.format(
             base_url,
             ('' if base_url[-1] == '/' else '/'))
-
+        self.auth_info = auth_info
         if not session_id:
             session_id = self.get_session(auth_info)
         self.session_id = session_id
@@ -49,7 +56,7 @@ class PublicatorClient(object):
         logger.debug('Session has response %s', result)
         return result['data']
 
-    def _send_msg(self, msg):
+    def _send_msg(self, msg, expected_return_type):
         url = '{0}{1}/http/'.format(self.base_url,
                                     self.session_id)
         logger.debug('Send a message to %s message %s', url, msg)
@@ -57,14 +64,20 @@ class PublicatorClient(object):
         response = requests.post(url,
                                  data=json.dumps(msg),
                                  headers=self.HEADERS)
-        logger.debug('message successfully sent to %s message=%s', url, msg)
+        logger.debug('message successfully sent')
         response.raise_for_status()
         result = response.json()
-        if result['type'] == 'error' \
-                and result['data'] == 'consumer_not_found':
+        logger.debug('response_text = %s' % (result,))
+        if result.get('type') == 'error' \
+                and result.get('data') == 'consumer_not_found':
             logger.warning('Session is dead. Creating a new session')
-            self.session_id = self.get_session()
+            self.session_id = self.get_session(self.auth_info)
             result = self._send_msg(msg)
+
+        if result.get('type') != expected_return_type:
+            raise PublicatorClientException(
+                'Return type %s does not match with expected type %s' %
+                (result.get('type'), expected_return_type))
         return result
 
     def publish(self, channel, msg):
@@ -76,7 +89,7 @@ class PublicatorClient(object):
                        'data': {'channel_code': channel,
                                 'message': msg}}
 
-        return self._send_msg(msg_to_send)
+        return self._send_msg(msg_to_send, 'response')
 
     def subscribe(self, channel, subscribtion_type=MESSAGE_ONLY):
         """
@@ -85,8 +98,9 @@ class PublicatorClient(object):
         msg_to_send = {'type': 'subscribe',
                        'data': {'channel_code': channel,
                                 'type': subscribtion_type}}
+        result = self._send_msg(msg_to_send, 'subscribed')
 
-        return self._send_msg(msg_to_send)
+        return {u'data': channel, u'type': u'subscribed'} == result
 
     def unsubscribe(self, channel):
         """
@@ -95,21 +109,21 @@ class PublicatorClient(object):
         msg_to_send = {'type': 'subscribe',
                        'data': channel}
 
-        return self._send_msg(msg_to_send)
+        return self._send_msg(msg_to_send, 'unsubscribed')
 
     def get_subscribtions(self):
         """
         Get list of subscribed channel list for current session.
         """
         msg_to_send = {'type': 'get_subscribtions'}
-
-        return self._send_msg(msg_to_send)
+        result = self._send_msg(msg_to_send, 'subscribtions')
+        return result['data']
 
     def get_consumers(self, channel):
         """
         Get list of consumer codes for given channel code.
         """
-        msg_to_send = {'type': 'get_subscribtions',
+        msg_to_send = {'type': 'get_consumers',
                        'data': {'channel_code': channel}}
-
-        return self._send_msg(msg_to_send)
+        result = self._send_msg(msg_to_send, 'consumers')
+        return result['data']
