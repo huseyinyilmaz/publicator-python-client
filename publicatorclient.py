@@ -68,16 +68,20 @@ class PublicatorClient(object):
         response.raise_for_status()
         result = response.json()
         logger.debug('response_text = %s' % (result,))
-        if result.get('type') == 'error' \
-                and result.get('data') == 'consumer_not_found':
-            logger.warning('Session is dead. Creating a new session')
-            self.session_id = self.get_session(self.auth_info)
-            result = self._send_msg(msg)
 
-        if result.get('type') != expected_return_type:
-            raise PublicatorClientException(
-                'Return type %s does not match with expected type %s' %
-                (result.get('type'), expected_return_type))
+        if isinstance(result, (list,)):
+            return result
+        else:
+            if result.get('type') == 'error' \
+                    and result.get('data') == 'consumer_not_found':
+                logger.warning('Session is dead. Creating a new session')
+                self.session_id = self.get_session(self.auth_info)
+                result = self._send_msg(msg)
+
+            if result.get('type') != expected_return_type:
+                raise PublicatorClientException(
+                    'Return type %s does not match with expected type %s' %
+                    (result.get('type'), expected_return_type))
         return result
 
     def publish(self, channel, msg):
@@ -88,8 +92,8 @@ class PublicatorClient(object):
         msg_to_send = {'type': 'publish',
                        'data': {'channel_code': channel,
                                 'message': msg}}
-
-        return self._send_msg(msg_to_send, 'response')
+        result = self._send_msg(msg_to_send, 'response')
+        return result['data']
 
     def subscribe(self, channel, subscribtion_type=MESSAGE_ONLY):
         """
@@ -128,3 +132,9 @@ class PublicatorClient(object):
                        'data': {'channel_code': channel}}
         result = self._send_msg(msg_to_send, 'consumers')
         return result['data']
+
+    def get_messages(self):
+        msg_to_send = {'type': 'get_messages',
+                       'data': {}}
+        result = self._send_msg(msg_to_send, 'messages')
+        return result
